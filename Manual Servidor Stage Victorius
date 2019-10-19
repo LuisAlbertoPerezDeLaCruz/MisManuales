@@ -1,0 +1,334 @@
+
+Servidor Stage Victorius (DO):
+
+
+
+I) Información General:
+  Ubicación: Digital Oceans
+  Dominio: stage.victorius.io
+  IP Publica: 157.230.150.140
+  Sistema Operativo: Ubuntu 18.04 lts
+
+
+
+II) Referencia Rápida (acceso y actualización).
+
+ Acceso al servidor:
+  sshpass -p 'victorius' ssh victorius@157.230.150.140
+  ssh victorius@157.230.150.140  con password=victorius
+
+ Aplicación:
+  victorius
+
+ Acceso a la aplicación:
+  $ sudo su - victorius
+  $ password: victorius
+
+ Actualización de la aplicación:
+  $ pwd -> /home/victorius ;verificación de ubicación
+  $ ./actualizar ; script que realiza todas las tareas de actualización
+
+Subir Avatar:
+  $ sudo scp /home/luis/workspace/django/vicGit/victorius/static/media/avatars/fittogo.png victorius@157.230.150.140:vicGit/victorius/static/media/avatars/.
+
+
+III) Estrategia de implementación:
+
+  1.- Supervisor: Es un sistema de control de procesos y vigilará a Gunicorn y Django para asegurarse de que todo funcione sin problemas. Si el servidor se reinicia, o si Gunicorn se bloquea, lo reiniciará automáticamente.
+  
+  2.- NGINX: Este recibirá todas las solicitudes al servidor. Pero no intentará hacer nada inteligente. Todo lo que va a hacer es decidir si la información solicitada es un activo estático que puede servir por sí mismo, o si es algo más complicado. Si es así, pasará la solicitud a Gunicorn. 
+  
+  3.- Gunicorn: Es un servidor de aplicaciones. Dependiendo de la cantidad de procesadores que tenga el servidor, puede generar múltiples trabajadores para procesar múltiples solicitudes en paralelo. Gestiona la carga de trabajo y ejecuta el código Python y Django.
+  
+  4.- Django: Es el que hace el trabajo duro. Puede acceder a la base de datos (PostgreSQL) o al sistema de archivos. Pero en su mayor parte, el trabajo se realiza dentro de las vistas, desplegando los templates, etc. Después de que Django procesa la solicitud, devuelve una respuesta a Gunicorn, quien devuelve el resultado a NGINX que finalmente entregará la respuesta al cliente.
+  
+  5.- PostgreSQL: Production dababase system.
+
+
+
+ IV) Pasos para la instalación:
+
+   1.- Creación del usuario victorius sin no existe:
+    desde root:
+	    $ adduser victorius
+	    $ gpasswd -a victorius sudo
+    desde otro usuario:
+	    $ sudo adduser victorius
+	    $ sudo gpasswd -a victorius sudo
+
+   2.- Actualizar sistema:
+	$ sudo apt-get update
+	$ sudo apt-get -y upgrade
+	$ sudo apt-get update
+	$ sudo add-apt-repository ppa:deadsnakes/ppa
+	$ sudo apt-get update
+	$ sudo apt-get install python3.6
+	$ locale es-VE.utf8
+
+   3.- Instalación de NGINX y Supervisor:
+    $ sudo apt-get -y install nginx
+    $ sudo apt-get -y install supervisor
+    $ sudo systemctl enable supervisor
+    $ sudo systemctl start supervisor
+
+   4.- Instalación de PostgreSQL:
+	$ sudo apt-get -y install postgresql postgresql-contrib
+	$ sudo su - postgres
+	$ createdb victorius --owner victorius
+	$ psql -c "ALTER USER postgres WITH PASSWORD 'caracas'"
+	
+	Nota: Hay que configurar el archivo pg_hba.conf en /etc/postgresql/10/main$
+	Es necesario para poder conectarse desde pgadmin. Ver configuracion hecha
+	en stage y tambien en este servidor.
+
+
+   5.- VirtualEnv
+    $ pwd -> /home/victorius
+    $ wget https://bootstrap.pypa.io/get-pip.py
+    $ apt-get install python3-distutils
+    $ sudo python3.6 get-pip.py
+    $ sudo pip3.6 install virtualenv
+	$ virtualenv venv -p python3.6
+
+   6.- Subir security key:
+    $ pwd -> /home/victorius
+    $ mkdir .ssh (copiar/subir a esta carpeta el archivo luisPerezkey.pem)
+
+   7.- Crear script actualizar:
+    hacer copy/paste del contenido ubicado en este documento
+    $ sudo chmod u+x actualizar 
+
+   8- Clonar repositorio de la aplicación:
+	$ sudo ssh-agent bash -c 'ssh-add ~/.ssh/luisPerezkey.pem; git clone git@23.22.253.223:victoriusGroup/vicGit.git'
+	$ sudo chmod 777 vicGit -R
+
+   9.- Activar VirtualEnv:
+    $ pwd -> /home/victorius
+    $ source/venv/bin/activate
+ 
+   10.- Instalar requerimientos de la aplicación:
+   	(venv)$ pip install -r vicGit/victorius/requirements.txt
+   	(venv)$ pip install gunicorn
+   	(venv)$ pip install psycopg2 
+
+   11.- Crear del archivo de entrorno de la aplicación (.env):
+    hacer copy/paste del contenido ubicado en este documento
+
+   12.- Crear archivo (gunicorn_start) de configuracion gunicorn:
+    hacer copy/paste del contenido ubicado en este documento
+    (venv)$ pwd -> /home/victorius
+    (venv)$ sudo chmod u+x gunicorn_start
+    (venv)$ mkdir run logs
+	(venv)$ touch logs/gunicorn.log
+
+   13.- Crear archivo (victorius) de configuración NGINX:
+	hacer copy/paste del contenido ubicado en este documento
+
+   14.-  Crear un link simbólico y eliminar nginx default:
+	(venv)$ sudo ln -s /etc/nginx/sites-available/victorius /etc/nginx/sites-enabled/victorius
+	(venv)$ sudo rm /etc/nginx/sites-available/default
+	(venv)$ sudo service nginx restart
+
+   15.- Crear archivo (victorius.conf) de confifuracion para supervisor	
+	hacer copy/paste del contenido ubicado en este documento
+	(venv)$ sudo supervisorctl reread
+	(venv)$ sudo supervisorctl update
+	(venv)$ sudo supervisorctl status victorius
+
+   16.- Configuración del certificado HTTPS:
+    (venv)$ sudo apt-get update
+	(venv)$ sudo apt-get install software-properties-common
+	(venv)$ sudo add-apt-repository ppa:certbot/certbot
+	(venv)$ sudo apt-get update
+	(venv)$ sudo apt-get install python-certbot-nginx
+	(venv)$ sudo certbot --nginx 
+	 	-> escoger 2 para re-direccionar todo tráfico HTTP a HTTPS.	
+	(venv)$ sudo crontab -e 
+		-> insertar la siguiente linea al final del archivo:
+		0 4 * * * /usr/bin/certbot renew --quiet
+
+   17.- Crear carpeta static del servidor:
+     (venv)$ pwd -> /home/victorius/vicGit/victorius
+     (venv)$ python manage.py collectstatic
+     (venv)$ python manage.py compilemessages
+
+   18.- Migrar Base de Datos si no se pretende realizar el siguiente paso.
+     (venv)$ pwd -> /home/victorius/vicGit/victorius
+     (venv)$ python manage.py migrate
+     (venv)$ python manage.py createsuperuser
+
+   19.- Importar datos desde un dump.
+     (venv)$ pwd -> /home/victorius
+     (venv)$ mkdir bd
+     desde el otro servidor realizar una copia del dump a la carpeta bd con el nombre victorius.bak
+ 	 (venv)$ su - postgres
+	 (venv)$ psql
+	 postgres=# DROP DATABASE victorius;
+	 postgres=# CREATE DATABASE victorius;
+	 postgres=# \q
+	 postgres@victorius:~$ psql victorius < /home/victorius/db/victorius.bak
+	 postgres@victorius:~$ exit
+   	     	
+
+ V) Apendice - Archivos de configuración del Servidor -:
+
+  1.- Gunicorn:
+
+	ubicación: /home/victorius/
+	Nombre del archivo: gunicorn_start
+
+	<--- comienzo del archivo gunicorn_start --->
+    
+	#!/bin/bash
+
+	NAME="victorius"
+	DIR=/home/victorius/vicGit/victorius
+	USER=victorius
+	GROUP=victorius
+	WORKERS=3
+	BIND=unix:/home/victorius/run/gunicorn.sock
+	DJANGO_SETTINGS_MODULE=victorius.settings
+	DJANGO_WSGI_MODULE=victorius.wsgi
+	LOG_LEVEL=error
+
+	cd $DIR
+
+	source ../../venv/bin/activate
+
+	export DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE
+	export PYTHONPATH=$DIR:$PYTHONPATH
+
+	exec ../../venv/bin/gunicorn ${DJANGO_WSGI_MODULE}:application \
+	  --name $NAME \
+	  --workers $WORKERS \
+	  --user=$USER \
+	  --group=$GROUP \
+	  --bind=$BIND \
+	  --log-level=$LOG_LEVEL \
+	  --log-file=-
+
+
+	<--- fin del archivo gunicorn_start --->
+
+
+  2.- Supervisor:
+
+	ubicación: /etc/supervisor/conf.d
+	Nombre del archivo: victorius.conf
+
+	<--- comienzo del archivo victorius.conf --->
+
+	[program:victorius]
+	command=/home/victorius/gunicorn_start
+	user=victorius
+	autostart=true
+	autorestart=true
+	redirect_stderr=true
+	stdout_logfile=/home/victorius/logs/gunicorn.log
+	stderr_logfile=/home/victorius/logs/err.log
+
+	<--- fin del archivo victorius.conf --->
+
+
+ 3.- NGINX:
+
+ 	ubicación: /etc/nginx/sites-available
+	Nombre del archivo: victorius
+
+
+	<--- comienzo del archivo victorius --->
+
+		upstream app_server {
+			server unix:/home/victorius/run/gunicorn.sock fail_timeout=0;
+		}
+
+		server {
+			server_name stage.victorius.io;  # here can also be the IP address of the server
+
+			keepalive_timeout 5;
+			client_max_body_size 4G;
+
+			access_log /home/victorius/logs/nginx-access.log;
+			error_log /home/victorius/logs/nginx-error.log;
+
+			location /static/ {
+				alias /home/victorius/vicGit/victorius/static/;
+			}
+
+			# checks for static file, if not found proxy to app
+			location / {
+			    try_files $uri @proxy_to_app;
+			}
+
+			location @proxy_to_app {
+			  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+			  proxy_set_header Host $http_host;
+			  proxy_redirect off;
+			  proxy_pass http://app_server;
+			}
+
+			listen 443 ssl; # managed by Certbot
+			ssl_certificate /etc/letsencrypt/live/stage.victorius.io/fullchain.pem; # managed by Certbot
+			ssl_certificate_key /etc/letsencrypt/live/stage.victorius.io/privkey.pem; # managed by Certbot
+			include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+			ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+		}
+
+
+		server {
+			if ($host = stage.victorius.io) {
+			    return 301 https://$host$request_uri;
+			} # managed by Certbot
+
+
+			listen 80;
+			server_name stage.victorius.io;
+			return 404; # managed by Certbot
+
+		}
+
+
+	<--- fin del archivo victorius --->
+
+
+4.- Script de actualizaciones:
+
+ 	ubicación: /home/victorius
+	Nombre del archivo: actualizar
+
+	<--- comienzo del archivo actualizar --->
+
+	source venv/bin/activate
+	cd ~/vicGit
+	sudo ssh-agent bash -c 'ssh-add ~/.ssh/luisPerezkey.pem; git pull origin master'
+	cd victorius
+	./manage.py compilemessages
+	./manage.py collectstatic
+	sudo supervisorctl restart victorius
+
+	<--- fin del archivo actualizar --->
+
+
+5.- Configuración del entorno de la aplicación:
+
+ 	ubicación: /home/victorius/vicGit/victorius
+	Nombre del archivo: .env
+
+	<--- comienzo del archivo .env --->
+
+	SECRET_KEY = '6q(u&_azf5q-4xg2-0tw*nzf-8vqx(iog=magt+mp^l=+4@y*n'
+	ALLOWED_HOSTS = .localhost,54.80.48.121,www.victorius.io,victorius.io,apis.victorius.io,stage.victorius.io
+	DEBUG = True
+	AMBIENTE = PRUDUCCION
+	DESARROLLADOR = LUIS
+	EMAIL_HOST = 'smtp.mailgun.org'
+	EMAIL_HOST_USER = 'postmaster@mg.victorius.io'
+	EMAIL_HOST_PASSWORD = '$vic#dollar'
+	DEFAULT_FROM_EMAIL = 'Equipo Victorius <postmaster@mg.victorius.io>'
+	EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+	EMAIL_FILE_PATH = ''
+	DATABASE_URL= 'postgres://postgres:caracas@localhost:5432/victorius'
+	GOOGLE_RECAPTCHA_SECRET_KEY=6Ld9xKUUAAAAAGnEcHimrl5Z-NZdx5XDUI2pRNYG
+
+	<--- fin del archivo .env --->

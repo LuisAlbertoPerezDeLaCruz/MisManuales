@@ -1,0 +1,209 @@
+
+Servidor angels (DO):
+
+Nota: Esta configuración esta sujeta a cambios:
+ - cuando se migre a postgresql.
+ - cuando se le asigne el dominio.
+ - cuando se incorpore un servicio de correos.
+ - cuando se cree un git en gitlab.
+
+
+I) Información General:
+  Ubicación: Digital Oceans
+  IP Publica: 165.22.39.92
+  Sistema Operativo: Ubuntu 18.04 lts
+
+
+
+II) Referencia Rápida (acceso y actualización).
+
+ Acceso al servidor:
+ 	ssh root@1165.22.39.92 y como password:vicangels
+	ssh vicnew@1165.22.39.92 y como password:vicnew
+
+ Aplicación:
+  vicnew
+
+ Acceso a la aplicación 
+  entra directamente en vicnew no hace falta realizar este paso
+  $ sudo su - vicnew
+  $ password: vicnew
+
+ Actualización de la aplicación:
+  $ pwd -> /home/vicnew ;verificación de ubicación
+  $ ./actualizar ; script que realiza todas las tareas de actualización
+
+
+
+III) Estrategia de implementación:
+
+  1.- Supervisor: Es un sistema de control de procesos y vigilará a Daphne y Django para asegurarse de que todo funcionen sin problemas. Si el servidor se reinicia, o si Daphne se bloquea, lo reiniciará automáticamente.
+  
+  2.- NGINX: Este recibirá todas las solicitudes al servidor. Pero no intentará hacer nada inteligente. Todo lo que va a hacer es decidir si la información solicitada es un activo estático que puede servir por sí mismo, o si es algo más complicado. Si es así, pasará la solicitud a Gunicorn. 
+  
+  3.- Daphne: Es un servidor de protocolo HTTP, HTTP2 y WebSocket para ASGI y ASGI-HTTP, desarrollado para alimentar los canales Django. Es compatible con la negociación automática de protocolos; no es necesario el prefijo de URL para determinar los puntos finales de WebSocket frente a los puntos finales HTTP. Es decir que este servidor se encargará de las tareas http y websocket.
+  
+  4.- Django: Es el que hace el trabajo duro. Puede acceder a la base de datos (PostgreSQL o Sqllite) o al sistema de archivos. Pero en su mayor parte, el trabajo se realiza dentro de las vistas, desplegando los templates, etc. Después de que Django procesa la solicitud, devuelve una respuesta a Daphne, quien devuelve el resultado a NGINX que finalmente entregará la respuesta al cliente.
+  
+
+
+ IV) Pasos para la instalación:
+
+   1.- Creación del usuario vicnew sin no existe:
+    desde root:
+	    $ adduser vicnew
+	    $ gpasswd -a vicnew sudo
+
+   2.- Actualizar sistema:
+	$ sudo apt-get update
+	$ sudo apt-get -y upgrade
+	$ sudo apt-get update
+	$ sudo add-apt-repository ppa:deadsnakes/ppa
+	$ sudo apt-get update
+	$ sudo apt-get install python3.6
+	$ locale es-VE.utf8
+
+   3.- Instalación de NGINX y Supervisor:
+    $ sudo apt-get -y install nginx
+    $ sudo apt-get -y install supervisor
+    $ sudo systemctl enable supervisor
+    $ sudo systemctl start supervisor
+
+   4.- VirtualEnv
+    $ pwd -> /home/vicnew
+    $ wget https://bootstrap.pypa.io/get-pip.py
+    $ apt-get install python3-distutils
+    $ sudo python3.6 get-pip.py
+    $ sudo pip3.6 install virtualenv
+	$ virtualenv venv -p python3.6
+
+   5- Clonar repositorio de la aplicación:
+	$ git clone https://github.com/LuisAlbertoPerezDeLaCruz/vicnew.git
+	(repositorio temporal)
+
+   6.- Activar VirtualEnv:
+    $ pwd -> /home/vicnew
+    $ source/venv/bin/activate
+ 
+   7.- Instalar requerimientos de la aplicación: 
+    (venv)$ pwd -> /home/vicnew  
+   	(venv)$ pip install -r vicnew/requirements.txt
+
+   8.- Crear del archivo de entrorno de la aplicación (.env):
+    hacer copy/paste del contenido ubicado en este documento
+
+   9.- Crear archivo (vicnew) de configuración NGINX:
+	hacer copy/paste del contenido ubicado en este documento
+
+   10.-  Crear un link simbólico y eliminar nginx default:
+	(venv)$ sudo ln -s /etc/nginx/sites-available/vicnew /etc/nginx/sites-enabled/vicnew
+	(venv)$ sudo rm /etc/nginx/sites-available/default
+	(venv)$ sudo service nginx restart
+
+   11.- Crear archivo (vicnew.conf) de confifuracion para supervisor	
+	hacer copy/paste del contenido ubicado en este documento
+	(venv)$ sudo supervisorctl reread
+	(venv)$ sudo supervisorctl update
+	(venv)$ sudo supervisorctl status all
+
+   12.- Crear carpeta static del servidor :
+     (venv)$ pwd -> /home/vicnew/vicnew
+     (venv)$ python manage.py collectstatic
+
+
+ V) Apendice - Archivos de configuración del Servidor -:
+
+
+  1.- Supervisor:
+
+	ubicación: /etc/supervisor/conf.d
+	Nombre del archivo: vicnew.conf
+
+	<--- comienzo del archivo vicnew.conf --->
+
+	[fcgi-program:asgi]
+
+	socket=tcp://localhost:8000
+
+	directory=/home/vicnew/vicnew
+
+	command=/home/vicnew/venv/bin/daphne -u /tmp/daphne%(process_num)d.sock --endpoint fd:fileno=0 --access-log - --proxy-headers vicnew.asgi:application
+
+	numprocs=4
+
+	process_name=asgi%(process_num)d
+
+	autostart=true
+	autorestart=true
+
+	stdout_logfile=/home/vicnew/logs/supervisor_log.log
+	redirect_stderr=true
+
+
+	<--- fin del archivo vicnew.conf --->
+
+
+ 2.- NGINX:
+
+ 	ubicación: /etc/nginx/sites-available
+	Nombre del archivo: vicnew
+
+
+	<--- comienzo del archivo vicnew --->
+
+	upstream channels-backend {
+	    server localhost:8000;
+	}
+
+	server {
+	    server_name 165.22.39.92;
+
+	    keepalive_timeout 5;
+	    client_max_body_size 1m;
+
+	    access_log /home/vicnew/logs/nginx-access.log;
+	    error_log /home/vicnew/logs/nginx-error.log;
+
+	    location /static/ {
+	        alias /home/vicnew/vicnew/static/;
+	    }
+
+	    # checks for static file, if not found proxy to app
+	    location / {
+	        try_files $uri @proxy_to_app;
+	    }
+
+	    location @proxy_to_app {
+	        proxy_pass http://channels-backend;
+
+	        proxy_http_version 1.1;
+	        proxy_set_header Upgrade $http_upgrade;
+	        proxy_set_header Connection "upgrade";
+
+	        proxy_redirect off;
+	        proxy_set_header Host $host;
+	        proxy_set_header X-Real-IP $remote_addr;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	        proxy_set_header X-Forwarded-Host $server_name;
+	    }
+
+	}
+
+
+	<--- fin del archivo vicnew --->
+
+
+3.- Configuración del entorno de la aplicación:
+
+ 	ubicación: /home/vicnew/vicnew/vicnew
+	Nombre del archivo: .env
+
+	<--- comienzo del archivo .env --->
+
+	SECRET_KEY = 'zc&5d-7c-ueio)$m-c13=jw4d4(73e#pn2blhkx0v8(%)j+w+xts'
+	DEBUG =  True
+
+	ALLOWED_HOSTS=.localhost,127.0.0.1,165.22.39.92
+
+
+	<--- fin del archivo .env --->
