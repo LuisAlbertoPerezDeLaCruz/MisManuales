@@ -32,7 +32,8 @@ II) Referencia Rápida (acceso y actualización).
  Subir Avatar:
   $ sudo scp /home/luis/workspace/django/vicGit/victorius/static/media/avatars/fittogo.png victorius@157.245.83.211:vicGit/victorius/static/media/avatars/.
 
-  $ sudo scp camenzumba.png victorius@157.245.83.211:vicGit/victorius/static/media/avatars/.
+  $ sudo scp carmenczumba.png victorius@157.245.83.211:vicGit/victorius/static/media/avatars/.
+
 
 III) Estrategia de implementación:
 
@@ -103,7 +104,8 @@ III) Estrategia de implementación:
     $ sudo chmod u+x actualizar 
 
    8- Clonar repositorio de la aplicación:
-	$ sudo ssh-agent bash -c 'ssh-add ~/.ssh/luisPerezkey.pem; git clone git@23.22.253.223:victoriusGroup/vicGit.git'
+	$ sudo ssh-agent bash -c 'ssh-add ~/.ssh/luisPerezkey.pem; git clone git@23.22.253.223:victoriusGroup/victorius_best.git'
+	$ sudo mv victorius_best victorius
 	$ sudo chmod 777 vicGit -R
 
    9.- Activar VirtualEnv:
@@ -242,55 +244,59 @@ III) Estrategia de implementación:
 
 	<--- comienzo del archivo victorius --->
 
-		upstream app_server {
-			server unix:/home/victorius/run/gunicorn.sock fail_timeout=0;
+	upstream app_server {
+		server unix:/home/victorius/run/gunicorn.sock fail_timeout=0;
+	}
+
+	server {
+		server_name www.victorius.io;  # here can also be the IP address of the server
+
+		keepalive_timeout 5;
+		client_max_body_size 4G;
+
+		access_log /home/victorius/logs/nginx-access.log;
+		error_log /home/victorius/logs/nginx-error.log;
+
+		location /static/ {
+			alias /home/victorius/vicGit/victorius/static/;
 		}
 
-		server {
-			server_name stage.victorius.io;  # here can also be the IP address of the server
+		# checks for static file, if not found proxy to app
+		location / {
+		    try_files $uri @proxy_to_app;
+		}
 
-			keepalive_timeout 5;
-			client_max_body_size 4G;
-
-			access_log /home/victorius/logs/nginx-access.log;
-			error_log /home/victorius/logs/nginx-error.log;
-
-			location /static/ {
-				alias /home/victorius/vicGit/victorius/static/;
-			}
-
-			# checks for static file, if not found proxy to app
-			location / {
-			    try_files $uri @proxy_to_app;
-			}
-
-			location @proxy_to_app {
-			  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-			  proxy_set_header Host $http_host;
-			  proxy_redirect off;
-			  proxy_pass http://app_server;
-			}
-
-			listen 443 ssl; # managed by Certbot
-			ssl_certificate /etc/letsencrypt/live/stage.victorius.io/fullchain.pem; # managed by Certbot
-			ssl_certificate_key /etc/letsencrypt/live/stage.victorius.io/privkey.pem; # managed by Certbot
-			include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-			ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
+		location @proxy_to_app {
+		  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		  proxy_set_header Host $http_host;
+		  proxy_redirect off;
+		  proxy_pass http://app_server;
 		}
 
 
-		server {
-			if ($host = stage.victorius.io) {
-			    return 301 https://$host$request_uri;
-			} # managed by Certbot
+	    listen 443 ssl; # managed by Certbot
+	    ssl_certificate /etc/letsencrypt/live/www.victorius.io/fullchain.pem; # managed by Certbot
+	    ssl_certificate_key /etc/letsencrypt/live/www.victorius.io/privkey.pem; # managed by Certbot
+	    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+	    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+	}
 
 
-			listen 80;
-			server_name stage.victorius.io;
-			return 404; # managed by Certbot
 
-		}
+
+	server {
+	    if ($host = www.victorius.io) {
+	        return 301 https://$host$request_uri;
+	    } # managed by Certbot
+
+
+		server_name www.victorius.io;
+	    listen 80;
+	    return 404; # managed by Certbot
+
+
+	}
 
 
 	<--- fin del archivo victorius --->
@@ -304,9 +310,8 @@ III) Estrategia de implementación:
 	<--- comienzo del archivo actualizar --->
 
 	source venv/bin/activate
-	cd ~/vicGit
+	cd ~/vicGit/victorius
 	sudo ssh-agent bash -c 'ssh-add ~/.ssh/luisPerezkey.pem; git pull origin master'
-	cd victorius
 	./manage.py compilemessages
 	./manage.py collectstatic
 	sudo supervisorctl restart victorius
@@ -326,9 +331,9 @@ III) Estrategia de implementación:
 	DEBUG = True
 	AMBIENTE = PRUDUCCION
 	DESARROLLADOR = LUIS
-	EMAIL_HOST = 'smtp.mailgun.org'
-	EMAIL_HOST_USER = 'postmaster@mg.victorius.io'
-	EMAIL_HOST_PASSWORD = '$vic#dollar'
+	EMAIL_HOST = 'smtp-relay.sendinblue.com'
+	EMAIL_HOST_USER = 'daniel@victorius.io'
+	EMAIL_HOST_PASSWORD = 'KJ6HznPv7yqWdBbV'
 	DEFAULT_FROM_EMAIL = 'Equipo Victorius <postmaster@mg.victorius.io>'
 	EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 	EMAIL_FILE_PATH = ''

@@ -18,8 +18,8 @@ I) Información General:
 II) Referencia Rápida (acceso y actualización).
 
  Acceso al servidor:
- 	ssh root@1165.22.39.92 y como password:vicangels
-	ssh vicnew@1165.22.39.92 y como password:vicnew
+ 	ssh root@165.22.39.92 y como password:vicangels
+	ssh vicnew@165.22.39.92 y como password:vicnew
 
  Aplicación:
   vicnew
@@ -32,7 +32,11 @@ II) Referencia Rápida (acceso y actualización).
  Actualización de la aplicación:
   $ pwd -> /home/vicnew ;verificación de ubicación
   $ ./actualizar ; script que realiza todas las tareas de actualización
-
+  
+  Los pasos serían:
+  vicnew@angels:~/vicnew$ git pull origin master
+  vicnew@angels:~/vicnew$ sudo service nginx restart
+  vicnew@angels:~/vicnew$ sudo supervisorctl restart all
 
 
 III) Estrategia de implementación:
