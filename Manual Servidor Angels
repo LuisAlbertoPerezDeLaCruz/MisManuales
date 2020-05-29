@@ -21,6 +21,12 @@ II) Referencia Rápida (acceso y actualización).
  	ssh root@165.22.39.92 y como password:vicangels
 	ssh vicnew@165.22.39.92 y como password:vicnew
 
+	nuevo password: @1b3rt0 (igual para root)
+	sshpass -p '@1b3rt0' ssh vicnew@165.22.39.92
+	ssh vicnew@165.22.39.92  con password=@1b3rt0
+
+clave nueva email: xsmtpsib-11f89b63bec0dbaa110d7aa2d3217fe60ae0e93f59f19b10b7f25ad7f716ff4c-Dy3C1IckxmXjPfBV
+
  Aplicación:
   vicnew
 
@@ -28,6 +34,8 @@ II) Referencia Rápida (acceso y actualización).
   entra directamente en vicnew no hace falta realizar este paso
   $ sudo su - vicnew
   $ password: vicnew
+
+  vicnew1956
 
  Actualización de la aplicación:
   $ pwd -> /home/vicnew ;verificación de ubicación

@@ -17,12 +17,18 @@ II) Referencia Rápida (acceso y actualización).
   sshpass -p 'victorius' ssh victorius@157.230.150.140
   ssh victorius@157.230.150.140  con password=victorius
 
+	nuevo password: @1b3rt0 (igual para root)
+	sshpass -p '@1b3rt0' ssh victorius@157.230.150.140
+	ssh victorius@157.230.150.140  con password=@1b3rt0
+
+
  Aplicación:
   victorius
 
  Acceso a la aplicación:
   $ sudo su - victorius
   $ password: victorius
+
 
  Actualización de la aplicación:
   $ pwd -> /home/victorius ;verificación de ubicación

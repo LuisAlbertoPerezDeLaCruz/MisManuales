@@ -16,6 +16,11 @@ II) Referencia Rápida (acceso y actualización).
  Acceso al servidor:
   sshpass -p 'victorius' ssh victorius@157.245.81.162
   ssh victorius@157.245.81.162  con password=victorius
+  
+	nuevo password: @1b3rt0 (tambien para root)
+	sshpass -p '@1b3rt0' ssh victorius@157.245.81.162
+	ssh victorius@157.245.81.162  con password=@1b3rt0
+
 
  Aplicación:
   victorius

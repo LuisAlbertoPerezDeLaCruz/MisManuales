@@ -14,6 +14,13 @@ II) Referencia Rápida (acceso y actualización).
  Acceso al servidor:
   sshpass -p 'victorius' ssh victorius@157.245.83.211
   ssh victorius@157.245.83.211  con password=victorius
+  
+  	nuevo password: victorius1956
+	ssh @1b3rt0@157.245.83.211  con password=@1b3rt0
+
+	nuevo password: @1b3rt0 (igual para root)
+	sshpass -p '@1b3rt0' ssh victorius@157.245.83.211
+	ssh victorius@157.245.83.211  con password=@1b3rt0
 
 /home/victorius/vicGit/victorius/static/media/avatars
 
