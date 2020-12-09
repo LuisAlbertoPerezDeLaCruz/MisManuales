@@ -1,0 +1,23 @@
+Backups/Restores
+
+Remote:
+$ sudo su - postgres
+$ pg_dump -f brio_remote -d brio8 -U postgres -h localhost --clean
+
+password para usuario postgress: lap_2017
+
+Local:
+
+$ sudo scp -r -i /home/luis/.ssh/ubuntu-vic-lap root@46.101.252.77:/var/lib/postgresql/brio_remote .
+$ sudo su - postgres
+$ psql brio8 < /home/luis/brio_remote
+
+password para usuario postgress: lap_2017
+
+Borrar/Crear BD:
+
+$ sudo su - postgres
+$ psql
+$ DROP DATABASE brio8;
+$ CREATE DATABASE brio8;
+$ \q

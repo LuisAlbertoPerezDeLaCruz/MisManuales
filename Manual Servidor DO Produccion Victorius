@@ -96,9 +96,8 @@ III) Estrategia de implementación:
     $ pwd -> /home/victorius
     $ wget https://bootstrap.pypa.io/get-pip.py
     $ sudo apt-get install python3-distutils
-    $ sudo python3.6 get-pip.py
-    $ sudo pip3.6 install virtualenv
-	$ virtualenv venv -p python3.6
+    $ sudo apt install python3-pip
+    $ pip3 --version
 
    6.- Subir security key:
     $ pwd -> /home/victorius

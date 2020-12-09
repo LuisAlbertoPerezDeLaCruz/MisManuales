@@ -1,0 +1,300 @@
+Digital Ocean LAP
+username:luisalbertoperez@gmail.com
+password: @1bert05
+
+
+ssh-key (located in .ssh folder under name ubuntu-vic-lap.pub)
+ssh-key (located in .ssh folder under name ubuntu-vic-lap)
+
+ip: 46.101.252.77
+
+$ sudo ssh -i /home/luis/.ssh/ubuntu-vic-lap root@46.101.252.77
+
+
+Instalacion del Servidor:
+
+Servidor ubuntu-vic-lap (DO):
+
+Nota: Esta configuración esta sujeta a cambios:
+ - cuando se migre a postgresql.
+ - cuando se le asigne el dominio.
+ - cuando se incorpore un servicio de correos.
+ - cuando se cree un git en gitlab.
+
+
+I) Información General:
+  Ubicación: Digital Oceans
+  IP Publica: 46.101.252.77
+  Sistema Operativo: Ubuntu 18.04 lts.
+
+
+II) Referencia Rápida (acceso y actualización).
+
+ Acceso al servidor:
+  $ sudo ssh -i /home/luis/.ssh/ubuntu-vic-lap root@46.101.252.77
+
+
+ Aplicación:
+  vicnew
+
+ Acceso a la aplicación 
+  entra directamente en vicnew hace falta realizar este paso desde el root
+  $ sudo su - vicnew
+  $ password: @1b3rt0
+
+ Actualización de la aplicación:
+  $ pwd -> /home/vicnew ;verificación de ubicación
+  $ ./actualizar ; script que realiza todas las tareas de actualización
+  
+  Los pasos serían:
+  vicnew@ubuntu-vic-lap:~/vicnew$ git pull origin master
+  vicnew@ubuntu-vic-lap:~/vicnew$ sudo service nginx restart
+  vicnew@ubuntu-vic-lap:~/vicnew$ sudo supervisorctl restart all
+
+
+III) Estrategia de implementación:
+
+  1.- Supervisor: Es un sistema de control de procesos y vigilará a Gunicorn y Django para asegurarse de que todo funcione sin problemas. Si el servidor se reinicia, o si Gunicorn se bloquea, lo reiniciará automáticamente.
+  
+  2.- NGINX: Este recibirá todas las solicitudes al servidor. Pero no intentará hacer nada inteligente. Todo lo que va a hacer es decidir si la información solicitada es un activo estático que puede servir por sí mismo, o si es algo más complicado. Si es así, pasará la solicitud a Gunicorn. 
+  
+  3.- Gunicorn: Es un servidor de aplicaciones. Dependiendo de la cantidad de procesadores que tenga el servidor, puede generar múltiples trabajadores para procesar múltiples solicitudes en paralelo. Gestiona la carga de trabajo y ejecuta el código Python y Django.
+  
+  4.- Django: Es el que hace el trabajo duro. Puede acceder a la base de datos (PostgreSQL) o al sistema de archivos. Pero en su mayor parte, el trabajo se realiza dentro de las vistas, desplegando los templates, etc. Después de que Django procesa la solicitud, devuelve una respuesta a Gunicorn, quien devuelve el resultado a NGINX que finalmente entregará la respuesta al cliente.  
+
+
+ IV) Pasos para la instalación:
+
+   1.- Actualizar sistema (en root):
+	$ sudo apt-get update
+	$ sudo apt-get -y upgrade
+	$ sudo apt-get update
+	$ sudo add-apt-repository ppa:deadsnakes/ppa
+	$ sudo apt-get update
+	$ sudo apt-get install python3.6
+	$ sudo update-locale LANG=es_VE.utf8 (si da problemas intentar primero $ sudo dpkg-reconfigure locales)
+	$ cat /etc/default/locale
+
+   2.- Instalación de Postgres, NGINX y Supervisor (en root):
+	$ sudo apt-get -y install postgresql postgresql-contrib
+	$ sudo apt install libpq-dev python3-dev
+	$ sudo apt-get install python-psycopg2
+	$ sudo apt-get install libpq-dev
+	$ sudo apt-get -y install nginx
+	$ sudo apt-get -y install supervisor
+	$ sudo systemctl enable supervisor
+	$ sudo systemctl start supervisor
+
+
+   3.- VirtualEnv (en root)
+	$ pwd -> /home/vicnew
+	$ wget https://bootstrap.pypa.io/get-pip.py
+	$ sudo apt install python3-pip
+	$ sudo pip3 install virtualenv
+
+
+   4.- Creación del usuario vicnew sin no existe (en root):
+	$ adduser vicnew
+	$ gpasswd -a vicnew sudo
+        $ sudo su - vicnew
+
+   5.- Activar VirtualEnv (en vicnew de ahora en adelante):
+        $ pwd -> /home/vicnew
+        $ git clone https://github.com/LuisAlbertoPerezDeLaCruz/vicnew.git
+	$ mkdir vicnew/media (sin sudo)
+        $ chmod 777 media -R (sin sudo)
+        $ virtualenv venv -p python3.6
+        $ source venv/bin/activate
+
+ 
+   7.- Instalar requerimientos de la aplicación: 
+	(venv)$ pwd -> /home/vicnew  syst
+	(venv)$ pip install -r vicnew/requirements.txt
+	(venv)$ pip install gunicorn 
+ 	(venv)$ pip install psycopg2
+	(venv)$ cd vicnew
+	(venv)$ ./manage.py collectstatic en (home/vicnew/vicnew)
+
+   8.- Crear archivo gunicorn_start en home/vicnew:
+	hacer copy/paste del contenido ubicado en este documento
+        (venv)$ nano gunicorn_start (sin sudo)
+	(venv)$ chmod u+x gunicorn_start
+	(venv)$ mkdir run logs
+
+   9.- Crear archivo vicnew.conf en /etc/supervisor/conf.d/:
+	(venv)$ touch logs/gunicorn.log
+        (venv)$ sudo nano /etc/supervisor/conf.d/vicnew.conf
+        hacer copy/paste del contenido ubicado en este documento
+        $ sudo supervisorctl reread
+        $ sudo supervisorctl update
+        $ sudo supervisorctl status vicnew
+
+       
+   10.- Crear archivo vicnew en /etc/nginx/sites-available/:
+       	hacer copy/paste del contenido ubicado en este documento
+        (venv)$ sudo nano /etc/nginx/sites-available/vicnew
+        (venv)$ sudo ln -s /etc/nginx/sites-available/vicnew /etc/nginx/sites-enabled/vicnew
+	(venv)$ sudo rm /etc/nginx/sites-enabled/default
+        (venv)$ sudo service nginx restart
+
+
+   11.- Crear del archivo de entrorno de la aplicación (.env):
+        hacer copy/paste del contenido ubicado en este documento
+
+
+   12.- Crear script actualizar:
+	hacer copy/paste del contenido ubicado en este documento
+	$ sudo chmod u+x actualizar 
+
+   13.- HTTPS Certificate:
+	(venv)$ sudo apt-get update
+	(venv)$ sudo apt-get install software-properties-common
+	(venv)$ sudo add-apt-repository ppa:certbot/certbot
+	(venv)$ sudo apt-get update
+	(venv)$ sudo apt-get install python-certbot-nginx
+	(venv)$ sudo certbot --nginx
+        (Choose 2 to redirect all HTTP traffic to HTTPS.)
+        (venv)$ sudo crontab -e 
+	agregar la siguiente linea al final:
+	0 4 * * * /usr/bin/certbot renew --quiet
+
+
+V) Apendice - Archivos de configuración del Servidor -:
+
+  1.- Gunicorn:
+
+	ubicación: /home/vicnew/
+	Nombre del archivo: gunicorn_start
+
+	<--- comienzo del archivo gunicorn_start --->
+	    
+	#!/bin/bash
+
+	NAME="vicnew"
+	DIR=/home/vicnew/vicnew
+	USER=vicnew
+	GROUP=vicnew
+	WORKERS=3
+	BIND=unix:/home/vicnew/run/gunicorn.sock
+	DJANGO_SETTINGS_MODULE=vicnew.settings
+	DJANGO_WSGI_MODULE=vicnew.wsgi
+	LOG_LEVEL=error
+
+	cd $DIR
+
+	source ../venv/bin/activate
+
+	export DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE
+	export PYTHONPATH=$DIR:$PYTHONPATH
+
+	exec ../venv/bin/gunicorn ${DJANGO_WSGI_MODULE}:application \
+	  --name $NAME \
+	  --workers $WORKERS \
+	  --user=$USER \
+	  --group=$GROUP \
+	  --bind=$BIND \
+	  --log-level=$LOG_LEVEL \
+	  --log-file=-
+
+
+	<--- fin del archivo gunicorn_start --->
+
+  2.- Supervisor:
+
+	ubicación: /etc/supervisor/conf.d
+	Nombre del archivo: vicnew.conf
+
+	<--- comienzo del archivo vicnew.conf --->
+
+	[program:vicnew]
+	command=/home/vicnew/gunicorn_start
+	user=vicnew
+	autostart=true
+	autorestart=true
+	redirect_stderr=true
+	stdout_logfile=/home/vicnew/logs/gunicorn.log
+
+	<--- fin del archivo vicnew.conf --->
+
+3.- NGINX:
+
+ 	ubicación: /etc/nginx/sites-available
+	Nombre del archivo: vicnew
+
+
+	<--- comienzo del archivo vicnew --->
+
+	upstream app_server {
+		server unix:/home/vicnew/run/gunicorn.sock fail_timeout=0;
+	}
+
+	server {
+		server_name concierge.victorius.io;  # here can also be the IP address of the server
+
+		keepalive_timeout 5;
+		client_max_body_size 4G;
+
+		access_log /home/vicnew/logs/nginx-access.log;
+		error_log /home/vicnew/logs/nginx-error.log;
+
+		location /static/ {
+			alias /home/vicnew/vicnew/static/;
+		}
+
+		# checks for static file, if not found proxy to app
+		location / {
+		    try_files $uri @proxy_to_app;
+		}
+
+		location @proxy_to_app {
+		  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		  proxy_set_header Host $http_host;
+		  proxy_redirect off;
+		  proxy_pass http://app_server;
+		}
+
+
+	}
+
+
+
+	<--- fin del archivo vicnew --->
+
+
+
+3.- Configuración del entorno de la aplicación:
+
+	ubicación: /home/vicnew/vicnew
+	Nombre del archivo: .env
+
+	<--- comienzo del archivo .env --->
+
+	SECRET_KEY = 'zc&5d-7c-ueio)$m-c13=jw4d4(73e#pn2blhkx0v8(%)j+w+xts'
+	ALLOWED_HOSTS=.localhost,127.0.0.1,46.101.252.77,concierge.vicnew.io
+	DEBUG = True
+	AMBIENTE = PRUDUCCION
+	DESARROLLADOR = LUIS
+	EMAIL_HOST = 'smtp-relay.sendinblue.com'
+	EMAIL_HOST_USER = 'daniel@victorius.io'
+	EMAIL_HOST_PASSWORD = 'HbDj30JprOLIPKAC'
+	DEFAULT_FROM_EMAIL = 'Equipo Victorius <postmaster@mg.victorius.io>'
+	EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+	EMAIL_FILE_PATH = ''
+
+	<--- fin del archivo .env --->
+
+4.- Script de actualizaciones:
+
+ 	ubicación: /home/vicnew
+	Nombre del archivo: actualizar
+
+	<--- comienzo del archivo actualizar --->
+
+	source venv/bin/activate
+	cd ~/vicnew/vicnew
+	git pull origin master
+	sudo supervisorctl restart vicnew
+
+	<--- fin del archivo actualizar --->
+
+

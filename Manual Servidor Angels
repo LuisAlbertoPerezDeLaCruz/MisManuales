@@ -73,7 +73,8 @@ III) Estrategia de implementación:
 	$ sudo add-apt-repository ppa:deadsnakes/ppa
 	$ sudo apt-get update
 	$ sudo apt-get install python3.6
-	$ locale es-VE.utf8
+	$ sudo update-locale LANG=es_VE.utf8 (si da problemas intentar primero $ sudo dpkg-reconfigure locales)
+	$ cat /etc/default/locale
 
    3.- Instalación de NGINX y Supervisor:
     $ sudo apt-get -y install nginx
@@ -81,13 +82,14 @@ III) Estrategia de implementación:
     $ sudo systemctl enable supervisor
     $ sudo systemctl start supervisor
 
+
    4.- VirtualEnv
     $ pwd -> /home/vicnew
     $ wget https://bootstrap.pypa.io/get-pip.py
     $ apt-get install python3-distutils
     $ sudo python3.6 get-pip.py
-    $ sudo pip3.6 install virtualenv
-	$ virtualenv venv -p python3.6
+    $ sudo pip3 install virtualenv
+    $ virtualenv venv -p python3.6
 
    5- Clonar repositorio de la aplicación:
 	$ git clone https://github.com/LuisAlbertoPerezDeLaCruz/vicnew.git
@@ -95,11 +97,11 @@ III) Estrategia de implementación:
 
    6.- Activar VirtualEnv:
     $ pwd -> /home/vicnew
-    $ source/venv/bin/activate
+    $ source venv/bin/activate
  
    7.- Instalar requerimientos de la aplicación: 
     (venv)$ pwd -> /home/vicnew  
-   	(venv)$ pip install -r vicnew/requirements.txt
+    (venv)$ pip install -r vicnew/requirements.txt
 
    8.- Crear del archivo de entrorno de la aplicación (.env):
     hacer copy/paste del contenido ubicado en este documento
@@ -168,7 +170,7 @@ III) Estrategia de implementación:
 	}
 
 	server {
-	    server_name 165.22.39.92;
+	    server_name 46.101.148.238;
 
 	    keepalive_timeout 5;
 	    client_max_body_size 1m;
@@ -177,26 +179,26 @@ III) Estrategia de implementación:
 	    error_log /home/vicnew/logs/nginx-error.log;
 
 	    location /static/ {
-	        alias /home/vicnew/vicnew/static/;
+		alias /home/vicnew/vicnew/static/;
 	    }
 
 	    # checks for static file, if not found proxy to app
 	    location / {
-	        try_files $uri @proxy_to_app;
+		try_files $uri @proxy_to_app;
 	    }
 
 	    location @proxy_to_app {
-	        proxy_pass http://channels-backend;
+		proxy_pass http://channels-backend;
 
-	        proxy_http_version 1.1;
-	        proxy_set_header Upgrade $http_upgrade;
-	        proxy_set_header Connection "upgrade";
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "upgrade";
 
-	        proxy_redirect off;
-	        proxy_set_header Host $host;
-	        proxy_set_header X-Real-IP $remote_addr;
-	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-	        proxy_set_header X-Forwarded-Host $server_name;
+		proxy_redirect off;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $server_name;
 	    }
 
 	}
@@ -213,9 +215,15 @@ III) Estrategia de implementación:
 	<--- comienzo del archivo .env --->
 
 	SECRET_KEY = 'zc&5d-7c-ueio)$m-c13=jw4d4(73e#pn2blhkx0v8(%)j+w+xts'
-	DEBUG =  True
-
-	ALLOWED_HOSTS=.localhost,127.0.0.1,165.22.39.92
-
+	ALLOWED_HOSTS=.localhost,127.0.0.1,46.101.148.238,concierge.victorius.io
+	DEBUG = True
+	AMBIENTE = PRUDUCCION
+	DESARROLLADOR = LUIS
+	EMAIL_HOST = 'smtp-relay.sendinblue.com'
+	EMAIL_HOST_USER = 'daniel@victorius.io'
+	EMAIL_HOST_PASSWORD = 'KJ6HznPv7yqWdBbV'
+	DEFAULT_FROM_EMAIL = 'Equipo Victorius <postmaster@mg.victorius.io>'
+	EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+	EMAIL_FILE_PATH = ''
 
 	<--- fin del archivo .env --->
